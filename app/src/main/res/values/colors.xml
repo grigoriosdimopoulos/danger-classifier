@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="safe_green">#4CAF50</color>
+    <color name="warning_yellow">#FFC107</color>
+    <color name="danger_orange">#FF9800</color>
+    <color name="extreme_red">#F44336</color>
+    <color name="overlay_bg">#CC000000</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#CCCCCC</color>
+    <color name="black">#000000</color>
+</resources>
