@@ -11,16 +11,21 @@ import java.util.concurrent.TimeUnit
 
 object ModelDownloader {
 
+    // SSD MobileNet V1 with TFLite Task Library metadata — guaranteed compatible with task-vision 0.4.4
     private const val MODEL_URL =
-        "https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/int8/1/efficientdet_lite0.tflite"
-    private const val MODEL_FILENAME = "efficientdet_lite0.tflite"
+        "https://storage.googleapis.com/download.tensorflow.org/models/tflite/task_library/object_detection/android/lite-model_ssd_mobilenet_v1_1_metadata_2.tflite"
+    private const val MODEL_FILENAME = "ssd_mobilenet_v1_metadata.tflite"
 
     fun getModelFile(context: Context): File =
         File(context.filesDir, MODEL_FILENAME)
 
     fun isModelReady(context: Context): Boolean {
         val f = getModelFile(context)
-        return f.exists() && f.length() > 100_000L  // sanity check: model must be >100 KB
+        return f.exists() && f.length() > 1_000_000L  // must be >1 MB (model is ~27 MB)
+    }
+
+    fun deleteModel(context: Context) {
+        getModelFile(context).delete()
     }
 
     suspend fun download(

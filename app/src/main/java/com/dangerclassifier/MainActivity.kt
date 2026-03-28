@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.widget.Button
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -28,6 +29,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var downloadOverlay: View
     private lateinit var downloadText: TextView
     private lateinit var downloadSubText: TextView
+    private lateinit var retryButton: Button
 
     private val detectorHelper = ObjectDetectorHelper(this@MainActivity)
     private var lastAnalysisMs = 0L
@@ -49,6 +51,12 @@ class MainActivity : AppCompatActivity() {
         downloadOverlay = findViewById(R.id.downloadOverlay)
         downloadText    = findViewById(R.id.downloadStatusText)
         downloadSubText = findViewById(R.id.downloadSubText)
+        retryButton     = findViewById(R.id.retryButton)
+        retryButton.setOnClickListener {
+            retryButton.visibility = View.GONE
+            ModelDownloader.deleteModel(this)
+            initModel()
+        }
     }
 
     // ── Model lifecycle ──────────────────────────────────────────────────────
@@ -73,7 +81,9 @@ class MainActivity : AppCompatActivity() {
     private fun loadAndStart() {
         val ok = detectorHelper.initialize(ModelDownloader.getModelFile(this))
         if (!ok) {
-            showError("Failed to load detection model. Delete app data and retry.")
+            // Cached model is bad — delete it so next retry re-downloads
+            ModelDownloader.deleteModel(this)
+            showError("Model load failed — tap Retry to re-download.")
             return
         }
         hideDownload()
@@ -180,6 +190,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showDownload(msg: String) {
         downloadOverlay.visibility = View.VISIBLE
+        retryButton.visibility     = View.GONE
         downloadText.text          = msg
         downloadSubText.text       = getString(R.string.one_time_download)
     }
@@ -190,6 +201,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showError(msg: String) {
         downloadOverlay.visibility = View.VISIBLE
+        retryButton.visibility     = View.VISIBLE
         downloadText.text          = "Error"
         downloadSubText.text       = msg
     }

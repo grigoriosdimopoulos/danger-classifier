@@ -137,6 +137,16 @@
             android:gravity="center"
             android:paddingHorizontal="32dp" />
 
+        <Button
+            android:id="@+id/retryButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Retry"
+            android:visibility="gone"
+            android:backgroundTint="@color/danger_orange"
+            android:textColor="@color/text_primary" />
+
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
