@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Warning triangle with rounded corners -->
+    <!-- Top vertex (54,14), bottom-left (12,86), bottom-right (96,86) -->
+    <!-- Corner rounding via quadratic bezier at each vertex -->
+    <path
+        android:fillColor="#FF4500"
+        android:pathData="M52,19 Q54,13 56,19 L94,81 Q97,87 91,87 L17,87 Q11,87 14,81 L52,19 Z" />
+
+    <!-- Exclamation bar -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M51,36 Q51,32 54,32 Q57,32 57,36 L57,64 Q57,68 54,68 Q51,68 51,64 Z" />
+
+    <!-- Exclamation dot -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M50,74 a4,4 0 0 1 8,0 a4,4 0 0 1 -8,0 Z" />
+
+</vector>

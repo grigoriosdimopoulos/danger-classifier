@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+
+    <!-- Outer glow ring -->
+    <path
+        android:fillColor="#33FF4500"
+        android:pathData="M60,4 Q63,4 65,8 L112,90 Q116,97 110,98 L10,98 Q4,97 8,90 L55,8 Q57,4 60,4 Z" />
+
+    <!-- Main warning triangle -->
+    <path
+        android:fillColor="#FF4500"
+        android:pathData="M60,16 Q63,12 65,17 L106,88 Q109,94 104,94 L16,94 Q11,94 14,88 L55,17 Q57,12 60,16 Z" />
+
+    <!-- Inner triangle highlight (top-left gradient effect) -->
+    <path
+        android:fillColor="#22FFFFFF"
+        android:pathData="M60,20 L65,17 L74,33 L60,38 Z" />
+
+    <!-- Exclamation bar -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M57,40 Q56,36 60,36 Q64,36 63,40 L63,68 Q64,72 60,72 Q56,72 57,68 Z" />
+
+    <!-- Exclamation dot -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M55,79 a5,5 0 0 1 10,0 a5,5 0 0 1 -10,0 Z" />
+
+</vector>

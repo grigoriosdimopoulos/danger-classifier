@@ -173,19 +173,34 @@ class MainActivity : AppCompatActivity() {
 
     // ── UI updates ───────────────────────────────────────────────────────────
 
-    private fun updateUI(result: DangerResult) {
-        scoreText.text      = result.score.toString()
-        scoreLabelText.text = result.level
-        reasoningText.text  = result.reasoning
+    private var lastScore = -1
 
+    private fun updateUI(result: DangerResult) {
         val color = when (result.score) {
             in 0..3 -> getColor(R.color.safe_green)
             in 4..6 -> getColor(R.color.warning_yellow)
             in 7..8 -> getColor(R.color.danger_orange)
             else    -> getColor(R.color.extreme_red)
         }
+
         scoreText.setTextColor(color)
         scoreLabelText.setTextColor(color)
+        scoreLabelText.text = result.level
+        reasoningText.text  = result.reasoning
+
+        if (result.score != lastScore) {
+            lastScore = result.score
+            scoreText.text = result.score.toString()
+            // Pulse animation on score change — more dramatic for high danger
+            if (result.score >= 7) {
+                scoreText.animate()
+                    .scaleX(1.12f).scaleY(1.12f)
+                    .setDuration(120)
+                    .withEndAction {
+                        scoreText.animate().scaleX(1f).scaleY(1f).setDuration(120).start()
+                    }.start()
+            }
+        }
     }
 
     private fun showDownload(msg: String) {

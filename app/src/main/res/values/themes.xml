@@ -1,11 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <style name="Theme.DangerClassifier" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <item name="colorPrimary">#F44336</item>
-        <item name="colorPrimaryVariant">#B71C1C</item>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Main app theme — fullscreen, black background -->
+    <style name="Theme.WarningAI" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/brand_accent</item>
+        <item name="colorPrimaryVariant">#BF360C</item>
         <item name="colorOnPrimary">#FFFFFF</item>
         <item name="android:windowBackground">@color/black</item>
-        <item name="android:statusBarColor">#000000</item>
+        <item name="android:statusBarColor">#00000000</item>
         <item name="android:navigationBarColor">#000000</item>
+        <item name="android:windowLayoutInDisplayCutoutMode" tools:targetApi="p">shortEdges</item>
     </style>
+
+    <!-- Splash theme — identical; SplashActivity controls its own flags -->
+    <style name="Theme.WarningAI.Splash" parent="Theme.WarningAI">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowBackground">@color/black</item>
+    </style>
+
 </resources>
