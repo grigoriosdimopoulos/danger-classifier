@@ -13,17 +13,17 @@ object ModelDownloader {
 
     private data class ModelSpec(val url: String, val filename: String, val minBytes: Long)
 
-    // EfficientDet Lite3 — COCO 90 classes, mAP 39.9, stronger than Lite2 (29.4)
+    // EfficientDet Lite2 — COCO 90, mAP 29.4, confirmed available
     private val DETECTOR = ModelSpec(
-        url      = "https://storage.googleapis.com/download.tensorflow.org/models/tflite/task_library/object_detection/android/lite-model_efficientdet_lite3_detection_metadata_1.tflite",
-        filename = "efficientdet_lite3_detection.tflite",
+        url      = "https://storage.googleapis.com/download.tensorflow.org/models/tflite/task_library/object_detection/android/lite-model_efficientdet_lite2_detection_metadata_1.tflite",
+        filename = "efficientdet_lite2_detection.tflite",
         minBytes = 1_000_000L
     )
 
-    // EfficientNet Lite4 — ImageNet 1000 classes, top-1 ~80.4% (vs Lite0 ~75.1%)
+    // EfficientNet Lite2 — ImageNet 1000 classes, top-1 ~77.5% (vs Lite0 ~75.1%), same URL pattern
     private val CLASSIFIER = ModelSpec(
-        url      = "https://storage.googleapis.com/download.tensorflow.org/models/tflite/task_library/image_classification/android/lite-model_efficientnet_lite4_uint8_2.tflite",
-        filename = "efficientnet_lite4_classifier.tflite",
+        url      = "https://storage.googleapis.com/download.tensorflow.org/models/tflite/task_library/image_classification/android/lite-model_efficientnet_lite2_uint8_2.tflite",
+        filename = "efficientnet_lite2_classifier.tflite",
         minBytes = 1_000_000L
     )
 
