@@ -274,7 +274,7 @@ object DangerScorer {
 
         // Scene classifier — only list items that score > 0
         val dangerousScene = sceneLabels
-            .filter { it.dangerScore > 0 && it.confidence > 0.06f }
+            .filter { it.dangerScore > 0 && it.confidence > 0.50f }
             .sortedByDescending { it.dangerScore * it.confidence }
             .take(4)
         if (dangerousScene.isNotEmpty()) {

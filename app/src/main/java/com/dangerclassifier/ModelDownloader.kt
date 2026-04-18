@@ -14,8 +14,8 @@ object ModelDownloader {
     private data class ModelSpec(val url: String, val filename: String, val minBytes: Long)
 
     private val DETECTOR = ModelSpec(
-        url      = "https://storage.googleapis.com/download.tensorflow.org/models/tflite/task_library/object_detection/android/lite-model_ssd_mobilenet_v1_1_metadata_2.tflite",
-        filename = "ssd_mobilenet_v1_metadata.tflite",
+        url      = "https://storage.googleapis.com/download.tensorflow.org/models/tflite/task_library/object_detection/android/lite-model_efficientdet_lite2_detection_metadata_1.tflite",
+        filename = "efficientdet_lite2_detection.tflite",
         minBytes = 1_000_000L
     )
 
