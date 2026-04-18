@@ -17,8 +17,8 @@ class ImageClassifierHelper(private val context: Context) {
     fun initialize(modelFile: File): Boolean {
         return try {
             val options = ImageClassifier.ImageClassifierOptions.builder()
-                .setMaxResults(8)
-                .setScoreThreshold(0.55f)
+                .setMaxResults(10)
+                .setScoreThreshold(0.40f)
                 .build()
             val buffer = FileInputStream(modelFile).channel
                 .map(FileChannel.MapMode.READ_ONLY, 0, modelFile.length())

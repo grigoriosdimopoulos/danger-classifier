@@ -187,7 +187,7 @@ class MainActivity : AppCompatActivity() {
             // Convert classifier output to SceneLabel with danger scores
             val sceneLabels = rawLabels
                 .map { (label, conf) -> SceneLabel(label, conf, DangerScorer.scoreImageNetLabel(label)) }
-                .filter { it.dangerScore > 0 && it.confidence > 0.50f }
+                .filter { it.dangerScore > 0 && it.confidence > 0.40f }
 
             val fullFrame = DetectionFrame(frame.boxes, sceneLabels, frame.imageWidth, frame.imageHeight)
             val result    = DangerScorer.analyze(fullFrame.boxes, sceneLabels)
