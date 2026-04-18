@@ -11,69 +11,92 @@ import java.util.concurrent.TimeUnit
 
 object ModelDownloader {
 
-    // SSD MobileNet V1 with TFLite Task Library metadata — guaranteed compatible with task-vision 0.4.4
-    private const val MODEL_URL =
-        "https://storage.googleapis.com/download.tensorflow.org/models/tflite/task_library/object_detection/android/lite-model_ssd_mobilenet_v1_1_metadata_2.tflite"
-    private const val MODEL_FILENAME = "ssd_mobilenet_v1_metadata.tflite"
+    private data class ModelSpec(val url: String, val filename: String, val minBytes: Long)
 
-    fun getModelFile(context: Context): File =
-        File(context.filesDir, MODEL_FILENAME)
+    private val DETECTOR = ModelSpec(
+        url      = "https://storage.googleapis.com/download.tensorflow.org/models/tflite/task_library/object_detection/android/lite-model_ssd_mobilenet_v1_1_metadata_2.tflite",
+        filename = "ssd_mobilenet_v1_metadata.tflite",
+        minBytes = 1_000_000L
+    )
 
-    fun isModelReady(context: Context): Boolean {
-        val f = getModelFile(context)
-        return f.exists() && f.length() > 1_000_000L  // must be >1 MB (model is ~27 MB)
-    }
+    // EfficientNet Lite0 — ImageNet 1000 classes, ~22 MB, fast on-device inference
+    private val CLASSIFIER = ModelSpec(
+        url      = "https://storage.googleapis.com/download.tensorflow.org/models/tflite/task_library/image_classification/android/lite-model_efficientnet_lite0_uint8_2.tflite",
+        filename = "efficientnet_lite0_classifier.tflite",
+        minBytes = 1_000_000L
+    )
 
-    fun deleteModel(context: Context) {
-        getModelFile(context).delete()
-    }
+    fun getDetectorFile(context: Context): File    = File(context.filesDir, DETECTOR.filename)
+    fun getClassifierFile(context: Context): File  = File(context.filesDir, CLASSIFIER.filename)
+
+    // Legacy name kept so existing call-sites compile unchanged
+    fun getModelFile(context: Context): File = getDetectorFile(context)
+
+    fun isDetectorReady(context: Context): Boolean    = ready(getDetectorFile(context),    DETECTOR.minBytes)
+    fun isClassifierReady(context: Context): Boolean  = ready(getClassifierFile(context),  CLASSIFIER.minBytes)
+
+    // Legacy — still used by loadAndStart() check
+    fun isModelReady(context: Context): Boolean = isDetectorReady(context)
+
+    fun deleteModel(context: Context)      { getDetectorFile(context).delete() }
+    fun deleteClassifier(context: Context) { getClassifierFile(context).delete() }
+
+    private fun ready(f: File, min: Long) = f.exists() && f.length() > min
+
+    // --- Generic download -------------------------------------------------
 
     suspend fun download(
         context: Context,
         onProgress: (String) -> Unit
-    ): Result<File> = withContext(Dispatchers.IO) {
-        val modelFile = getModelFile(context)
-        try {
-            onProgress("Connecting…")
+    ): Result<File> = downloadSpec(context, DETECTOR, "model 1 of 2", onProgress)
 
+    suspend fun downloadClassifier(
+        context: Context,
+        onProgress: (String) -> Unit
+    ): Result<File> = downloadSpec(context, CLASSIFIER, "model 2 of 2", onProgress)
+
+    private suspend fun downloadSpec(
+        context: Context,
+        spec: ModelSpec,
+        label: String,
+        onProgress: (String) -> Unit
+    ): Result<File> = withContext(Dispatchers.IO) {
+        val file = File(context.filesDir, spec.filename)
+        try {
+            onProgress("Connecting ($label)…")
             val client = OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(120, TimeUnit.SECONDS)
+                .readTimeout(180, TimeUnit.SECONDS)
                 .build()
 
-            val response = client.newCall(Request.Builder().url(MODEL_URL).build()).execute()
-
-            if (!response.isSuccessful) {
-                return@withContext Result.failure(
-                    Exception("Server returned ${response.code}")
-                )
-            }
+            val response = client.newCall(Request.Builder().url(spec.url).build()).execute()
+            if (!response.isSuccessful)
+                return@withContext Result.failure(Exception("Server ${response.code}"))
 
             val body = response.body
-                ?: return@withContext Result.failure(Exception("Empty response body"))
+                ?: return@withContext Result.failure(Exception("Empty body"))
 
-            val totalBytes = body.contentLength()
-            var downloaded = 0L
+            val total = body.contentLength()
+            var done  = 0L
 
-            FileOutputStream(modelFile).use { out ->
+            FileOutputStream(file).use { out ->
                 body.byteStream().use { input ->
-                    val buf = ByteArray(8192)
+                    val buf = ByteArray(16_384)
                     var n: Int
                     while (input.read(buf).also { n = it } != -1) {
                         out.write(buf, 0, n)
-                        downloaded += n
-                        if (totalBytes > 0) {
-                            val pct = (downloaded * 100 / totalBytes).toInt()
-                            val mb = String.format("%.1f", downloaded / 1_048_576f)
-                            onProgress("Downloading model… $pct% ($mb MB)")
+                        done += n
+                        if (total > 0) {
+                            val pct = (done * 100 / total).toInt()
+                            val mb  = "%.1f".format(done / 1_048_576f)
+                            onProgress("Downloading $label… $pct% (${mb} MB)")
                         }
                     }
                 }
             }
-
-            Result.success(modelFile)
+            Result.success(file)
         } catch (e: Exception) {
-            modelFile.delete()
+            file.delete()
             Result.failure(e)
         }
     }

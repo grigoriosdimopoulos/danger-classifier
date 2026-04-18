@@ -23,6 +23,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -39,17 +40,20 @@ class MainActivity : AppCompatActivity() {
     private lateinit var downloadSubText: TextView
     private lateinit var retryButton: Button
 
-    private val detectorHelper = ObjectDetectorHelper(this)
-    private var lastAnalysisMs = 0L
-    private val analysisIntervalMs = 700L
-    private var lastScore = -1
-    private var wasHighDanger = false
+    private val detectorHelper    = ObjectDetectorHelper(this)
+    private val classifierHelper  = ImageClassifierHelper(this)
+    private var classifierEnabled = false   // graceful fallback if 2nd model fails
+
+    private var lastAnalysisMs  = 0L
+    private val analysisInterval = 700L
+    private var lastScore        = -1
+    private var wasHighDanger    = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         bindViews()
-        initModel()
+        initModels()
     }
 
     private fun bindViews() {
@@ -66,38 +70,48 @@ class MainActivity : AppCompatActivity() {
         retryButton.setOnClickListener {
             retryButton.visibility = View.GONE
             ModelDownloader.deleteModel(this)
-            initModel()
+            ModelDownloader.deleteClassifier(this)
+            initModels()
         }
     }
 
     // ── Model lifecycle ──────────────────────────────────────────────────────
 
-    private fun initModel() {
-        if (ModelDownloader.isModelReady(this)) {
-            loadAndStart()
-        } else {
-            showDownload("Preparing to download detection model…")
-            lifecycleScope.launch {
-                val result = ModelDownloader.download(this@MainActivity) { msg ->
+    private fun initModels() {
+        lifecycleScope.launch {
+            // Step 1: detector
+            if (!ModelDownloader.isDetectorReady(this@MainActivity)) {
+                showDownload("Downloading detection model (1 of 2)…")
+                val r = ModelDownloader.download(this@MainActivity) { msg ->
                     runOnUiThread { downloadText.text = msg }
                 }
-                result.fold(
-                    onSuccess = { loadAndStart() },
-                    onFailure = { e -> showError("Download failed: ${e.message}") }
+                if (r.isFailure) { showError("Download failed: ${r.exceptionOrNull()?.message}"); return@launch }
+            }
+            val detOk = detectorHelper.initialize(ModelDownloader.getDetectorFile(this@MainActivity))
+            if (!detOk) {
+                ModelDownloader.deleteModel(this@MainActivity)
+                showError("Detector model failed to load — tap Retry."); return@launch
+            }
+
+            // Step 2: classifier (non-blocking — app works without it)
+            if (!ModelDownloader.isClassifierReady(this@MainActivity)) {
+                showDownload("Downloading scene classifier (2 of 2)…")
+                val r = ModelDownloader.downloadClassifier(this@MainActivity) { msg ->
+                    runOnUiThread { downloadText.text = msg }
+                }
+                if (r.isFailure) {
+                    Log.w(TAG, "Classifier download failed — continuing detector-only")
+                }
+            }
+            if (ModelDownloader.isClassifierReady(this@MainActivity)) {
+                classifierEnabled = classifierHelper.initialize(
+                    ModelDownloader.getClassifierFile(this@MainActivity)
                 )
             }
-        }
-    }
 
-    private fun loadAndStart() {
-        val ok = detectorHelper.initialize(ModelDownloader.getModelFile(this))
-        if (!ok) {
-            ModelDownloader.deleteModel(this)
-            showError("Model load failed — tap Retry to re-download.")
-            return
+            hideDownload()
+            checkCameraPermission()
         }
-        hideDownload()
-        checkCameraPermission()
     }
 
     // ── Camera permission ────────────────────────────────────────────────────
@@ -105,11 +119,8 @@ class MainActivity : AppCompatActivity() {
     private fun checkCameraPermission() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
             == PackageManager.PERMISSION_GRANTED
-        ) {
-            startCamera()
-        } else {
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), RC_CAMERA)
-        }
+        ) startCamera()
+        else ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), RC_CAMERA)
     }
 
     override fun onRequestPermissionsResult(
@@ -118,8 +129,7 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == RC_CAMERA && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED)
             startCamera()
-        else
-            showError("Camera permission is required to use this app.")
+        else showError("Camera permission is required to use this app.")
     }
 
     // ── CameraX ──────────────────────────────────────────────────────────────
@@ -140,7 +150,7 @@ class MainActivity : AppCompatActivity() {
 
             analysis.setAnalyzer(ContextCompat.getMainExecutor(this)) { imageProxy ->
                 val now = System.currentTimeMillis()
-                if (now - lastAnalysisMs >= analysisIntervalMs) {
+                if (now - lastAnalysisMs >= analysisInterval) {
                     lastAnalysisMs = now
                     val bitmap   = imageProxy.toBitmap()
                     val rotation = imageProxy.imageInfo.rotationDegrees
@@ -154,27 +164,42 @@ class MainActivity : AppCompatActivity() {
             try {
                 provider.unbindAll()
                 provider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
-            } catch (e: Exception) {
-                Log.e(TAG, "Camera bind failed", e)
-            }
+            } catch (e: Exception) { Log.e(TAG, "Camera bind failed", e) }
         }, ContextCompat.getMainExecutor(this))
     }
 
-    // ── Inference ────────────────────────────────────────────────────────────
+    // ── Inference — detector + classifier run concurrently ───────────────────
 
     private fun runAnalysis(bitmap: android.graphics.Bitmap, rotation: Int) {
         progressBar.visibility = View.VISIBLE
         lifecycleScope.launch(Dispatchers.Default) {
-            val frame  = detectorHelper.detect(bitmap, rotation)
-            val result = DangerScorer.analyze(frame.boxes)
+
+            // Detector and classifier launched concurrently
+            val boxesDeferred  = async { detectorHelper.detect(bitmap, rotation) }
+            val labelsDeferred = async {
+                if (classifierEnabled) classifierHelper.classify(bitmap, rotation)
+                else emptyList()
+            }
+
+            val frame  = boxesDeferred.await()
+            val rawLabels = labelsDeferred.await()
+
+            // Convert classifier output to SceneLabel with danger scores
+            val sceneLabels = rawLabels
+                .map { (label, conf) -> SceneLabel(label, conf, DangerScorer.scoreImageNetLabel(label)) }
+                .filter { it.dangerScore > 0 || it.confidence > 0.15f }
+
+            val fullFrame = DetectionFrame(frame.boxes, sceneLabels, frame.imageWidth, frame.imageHeight)
+            val result    = DangerScorer.analyze(fullFrame.boxes, sceneLabels)
+
             withContext(Dispatchers.Main) {
-                updateUI(result, frame)
+                updateUI(result, fullFrame)
                 progressBar.visibility = View.GONE
             }
         }
     }
 
-    // ── UI updates ───────────────────────────────────────────────────────────
+    // ── UI updates ────────────────────────────────────────────────────────────
 
     private fun updateUI(result: DangerResult, frame: DetectionFrame) {
         val color = when (result.score) {
@@ -199,14 +224,11 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Bounding box overlay — pass highlight boxes + image dimensions
-        if (result.highlightBoxes.isNotEmpty()) {
+        if (result.highlightBoxes.isNotEmpty())
             detectionOverlay.setDetections(result.highlightBoxes, frame.imageWidth, frame.imageHeight)
-        } else {
+        else
             detectionOverlay.clear()
-        }
 
-        // Vibrate on transition into high-danger state
         maybeVibrate(result.score)
     }
 
@@ -226,11 +248,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val effect = if (score >= 9) {
+            val effect = if (score >= 9)
                 VibrationEffect.createWaveform(longArrayOf(0, 80, 50, 120, 50, 80), -1)
-            } else {
+            else
                 VibrationEffect.createWaveform(longArrayOf(0, 60, 40, 60), -1)
-            }
             vibrator.vibrate(effect)
         } else {
             if (score >= 9) vibrator.vibrate(longArrayOf(0, 80, 50, 120, 50, 80), -1)
@@ -238,7 +259,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ── Overlay state ─────────────────────────────────────────────────────────
+    // ── Overlay helpers ───────────────────────────────────────────────────────
 
     private fun showDownload(msg: String) {
         downloadOverlay.visibility = View.VISIBLE
@@ -259,10 +280,11 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         detectorHelper.close()
+        classifierHelper.close()
     }
 
     companion object {
-        private const val TAG      = "MainActivity"
+        private const val TAG       = "MainActivity"
         private const val RC_CAMERA = 100
     }
 }
