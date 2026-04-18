@@ -37,7 +37,7 @@ class ObjectDetectorHelper(private val context: Context) {
     }
 
     fun detect(bitmap: Bitmap, rotationDegrees: Int): DetectionFrame {
-        val det = detector ?: return DetectionFrame(emptyList(), bitmap.width, bitmap.height)
+        val det = detector ?: return DetectionFrame(emptyList(), emptyList(), bitmap.width, bitmap.height)
         return try {
             val rotated = rotateBitmap(bitmap, rotationDegrees)
             val tensorImage = TensorImage.fromBitmap(rotated)
@@ -54,10 +54,10 @@ class ObjectDetectorHelper(private val context: Context) {
                 }
             }.sortedByDescending { it.dangerScore * it.confidence }
 
-            DetectionFrame(boxes, rotated.width, rotated.height)
+            DetectionFrame(boxes, emptyList(), rotated.width, rotated.height)
         } catch (e: Exception) {
             Log.e(TAG, "Detection failed", e)
-            DetectionFrame(emptyList(), bitmap.width, bitmap.height)
+            DetectionFrame(emptyList(), emptyList(), bitmap.width, bitmap.height)
         }
     }
 
