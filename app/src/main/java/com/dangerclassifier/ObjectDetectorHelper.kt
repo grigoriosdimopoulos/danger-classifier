@@ -18,7 +18,7 @@ class ObjectDetectorHelper(private val context: Context) {
     fun initialize(modelFile: File): Boolean {
         return try {
             val options = ObjectDetector.ObjectDetectorOptions.builder()
-                .setMaxResults(10)
+                .setMaxResults(15)
                 .setScoreThreshold(0.3f)
                 .build()
             val mappedBuffer = mapModelFile(modelFile)
@@ -36,19 +36,28 @@ class ObjectDetectorHelper(private val context: Context) {
         return fis.channel.map(FileChannel.MapMode.READ_ONLY, 0, fis.channel.size())
     }
 
-    fun detect(bitmap: Bitmap, rotationDegrees: Int): List<Pair<String, Float>> {
-        val det = detector ?: return emptyList()
+    fun detect(bitmap: Bitmap, rotationDegrees: Int): DetectionFrame {
+        val det = detector ?: return DetectionFrame(emptyList(), bitmap.width, bitmap.height)
         return try {
             val rotated = rotateBitmap(bitmap, rotationDegrees)
             val tensorImage = TensorImage.fromBitmap(rotated)
-            det.detect(tensorImage).flatMap { detection ->
-                detection.categories.map { category ->
-                    Pair(category.label, category.score)
+            val results = det.detect(tensorImage)
+
+            val boxes = results.flatMap { detection ->
+                detection.categories.take(1).map { category ->
+                    DetectionBox(
+                        label       = category.label,
+                        confidence  = category.score,
+                        boundingBox = detection.boundingBox,
+                        dangerScore = DangerScorer.getDangerScore(category.label)
+                    )
                 }
-            }.sortedByDescending { it.second }
+            }.sortedByDescending { it.dangerScore * it.confidence }
+
+            DetectionFrame(boxes, rotated.width, rotated.height)
         } catch (e: Exception) {
             Log.e(TAG, "Detection failed", e)
-            emptyList()
+            DetectionFrame(emptyList(), bitmap.width, bitmap.height)
         }
     }
 

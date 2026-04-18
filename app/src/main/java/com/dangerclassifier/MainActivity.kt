@@ -1,8 +1,13 @@
 package com.dangerclassifier
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.util.Log
 import android.view.View
 import android.widget.Button
@@ -17,11 +22,14 @@ import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var previewView: PreviewView
+    private lateinit var detectionOverlay: DetectionOverlayView
     private lateinit var scoreText: TextView
     private lateinit var scoreLabelText: TextView
     private lateinit var reasoningText: TextView
@@ -31,9 +39,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var downloadSubText: TextView
     private lateinit var retryButton: Button
 
-    private val detectorHelper = ObjectDetectorHelper(this@MainActivity)
+    private val detectorHelper = ObjectDetectorHelper(this)
     private var lastAnalysisMs = 0L
     private val analysisIntervalMs = 700L
+    private var lastScore = -1
+    private var wasHighDanger = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,15 +53,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun bindViews() {
-        previewView     = findViewById(R.id.previewView)
-        scoreText       = findViewById(R.id.scoreText)
-        scoreLabelText  = findViewById(R.id.scoreLabelText)
-        reasoningText   = findViewById(R.id.reasoningText)
-        progressBar     = findViewById(R.id.progressBar)
-        downloadOverlay = findViewById(R.id.downloadOverlay)
-        downloadText    = findViewById(R.id.downloadStatusText)
-        downloadSubText = findViewById(R.id.downloadSubText)
-        retryButton     = findViewById(R.id.retryButton)
+        previewView      = findViewById(R.id.previewView)
+        detectionOverlay = findViewById(R.id.detectionOverlay)
+        scoreText        = findViewById(R.id.scoreText)
+        scoreLabelText   = findViewById(R.id.scoreLabelText)
+        reasoningText    = findViewById(R.id.reasoningText)
+        progressBar      = findViewById(R.id.progressBar)
+        downloadOverlay  = findViewById(R.id.downloadOverlay)
+        downloadText     = findViewById(R.id.downloadStatusText)
+        downloadSubText  = findViewById(R.id.downloadSubText)
+        retryButton      = findViewById(R.id.retryButton)
         retryButton.setOnClickListener {
             retryButton.visibility = View.GONE
             ModelDownloader.deleteModel(this)
@@ -81,7 +92,6 @@ class MainActivity : AppCompatActivity() {
     private fun loadAndStart() {
         val ok = detectorHelper.initialize(ModelDownloader.getModelFile(this))
         if (!ok) {
-            // Cached model is bad — delete it so next retry re-downloads
             ModelDownloader.deleteModel(this)
             showError("Model load failed — tap Retry to re-download.")
             return
@@ -98,9 +108,7 @@ class MainActivity : AppCompatActivity() {
         ) {
             startCamera()
         } else {
-            ActivityCompat.requestPermissions(
-                this, arrayOf(Manifest.permission.CAMERA), RC_CAMERA
-            )
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), RC_CAMERA)
         }
     }
 
@@ -108,13 +116,10 @@ class MainActivity : AppCompatActivity() {
         requestCode: Int, permissions: Array<out String>, grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == RC_CAMERA &&
-            grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED
-        ) {
+        if (requestCode == RC_CAMERA && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED)
             startCamera()
-        } else {
+        else
             showError("Camera permission is required to use this app.")
-        }
     }
 
     // ── CameraX ──────────────────────────────────────────────────────────────
@@ -148,9 +153,7 @@ class MainActivity : AppCompatActivity() {
 
             try {
                 provider.unbindAll()
-                provider.bindToLifecycle(
-                    this, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis
-                )
+                provider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
             } catch (e: Exception) {
                 Log.e(TAG, "Camera bind failed", e)
             }
@@ -161,11 +164,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun runAnalysis(bitmap: android.graphics.Bitmap, rotation: Int) {
         progressBar.visibility = View.VISIBLE
-        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.Default) {
-            val detections = detectorHelper.detect(bitmap, rotation)
-            val result     = DangerScorer.analyze(detections)
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                updateUI(result)
+        lifecycleScope.launch(Dispatchers.Default) {
+            val frame  = detectorHelper.detect(bitmap, rotation)
+            val result = DangerScorer.analyze(frame.boxes)
+            withContext(Dispatchers.Main) {
+                updateUI(result, frame)
                 progressBar.visibility = View.GONE
             }
         }
@@ -173,16 +176,13 @@ class MainActivity : AppCompatActivity() {
 
     // ── UI updates ───────────────────────────────────────────────────────────
 
-    private var lastScore = -1
-
-    private fun updateUI(result: DangerResult) {
+    private fun updateUI(result: DangerResult, frame: DetectionFrame) {
         val color = when (result.score) {
             in 0..3 -> getColor(R.color.safe_green)
             in 4..6 -> getColor(R.color.warning_yellow)
             in 7..8 -> getColor(R.color.danger_orange)
             else    -> getColor(R.color.extreme_red)
         }
-
         scoreText.setTextColor(color)
         scoreLabelText.setTextColor(color)
         scoreLabelText.text = result.level
@@ -191,17 +191,54 @@ class MainActivity : AppCompatActivity() {
         if (result.score != lastScore) {
             lastScore = result.score
             scoreText.text = result.score.toString()
-            // Pulse animation on score change — more dramatic for high danger
             if (result.score >= 7) {
-                scoreText.animate()
-                    .scaleX(1.12f).scaleY(1.12f)
-                    .setDuration(120)
+                scoreText.animate().scaleX(1.14f).scaleY(1.14f).setDuration(110)
                     .withEndAction {
-                        scoreText.animate().scaleX(1f).scaleY(1f).setDuration(120).start()
+                        scoreText.animate().scaleX(1f).scaleY(1f).setDuration(110).start()
                     }.start()
             }
         }
+
+        // Bounding box overlay — pass highlight boxes + image dimensions
+        if (result.highlightBoxes.isNotEmpty()) {
+            detectionOverlay.setDetections(result.highlightBoxes, frame.imageWidth, frame.imageHeight)
+        } else {
+            detectionOverlay.clear()
+        }
+
+        // Vibrate on transition into high-danger state
+        maybeVibrate(result.score)
     }
+
+    // ── Vibration ────────────────────────────────────────────────────────────
+
+    @Suppress("DEPRECATION")
+    private fun maybeVibrate(score: Int) {
+        val isHigh = score >= 7
+        if (isHigh == wasHighDanger) return
+        wasHighDanger = isHigh
+        if (!isHigh) return
+
+        val vibrator: Vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
+        } else {
+            getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val effect = if (score >= 9) {
+                VibrationEffect.createWaveform(longArrayOf(0, 80, 50, 120, 50, 80), -1)
+            } else {
+                VibrationEffect.createWaveform(longArrayOf(0, 60, 40, 60), -1)
+            }
+            vibrator.vibrate(effect)
+        } else {
+            if (score >= 9) vibrator.vibrate(longArrayOf(0, 80, 50, 120, 50, 80), -1)
+            else            vibrator.vibrate(longArrayOf(0, 60, 40, 60), -1)
+        }
+    }
+
+    // ── Overlay state ─────────────────────────────────────────────────────────
 
     private fun showDownload(msg: String) {
         downloadOverlay.visibility = View.VISIBLE
@@ -210,9 +247,7 @@ class MainActivity : AppCompatActivity() {
         downloadSubText.text       = getString(R.string.one_time_download)
     }
 
-    private fun hideDownload() {
-        downloadOverlay.visibility = View.GONE
-    }
+    private fun hideDownload() { downloadOverlay.visibility = View.GONE }
 
     private fun showError(msg: String) {
         downloadOverlay.visibility = View.VISIBLE
@@ -220,8 +255,6 @@ class MainActivity : AppCompatActivity() {
         downloadText.text          = "Error"
         downloadSubText.text       = msg
     }
-
-    // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     override fun onDestroy() {
         super.onDestroy()

@@ -2,12 +2,11 @@
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/splashRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/bg_splash_gradient">
 
-    <!-- Logo block — centered vertically in upper 55% -->
+    <!-- Logo + app name block -->
     <LinearLayout
         android:id="@+id/logoBlock"
         android:layout_width="wrap_content"
@@ -19,21 +18,21 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toTopOf="@id/quoteBlock"
-        app:layout_constraintVertical_bias="0.55">
+        app:layout_constraintVertical_bias="0.52">
 
         <ImageView
-            android:layout_width="120dp"
-            android:layout_height="120dp"
+            android:layout_width="110dp"
+            android:layout_height="110dp"
             android:src="@drawable/ic_warning_large"
             android:contentDescription="Warning.AI logo" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
+            android:layout_marginTop="18dp"
             android:text="Warning.AI"
             android:textColor="#FFFFFF"
-            android:textSize="36sp"
+            android:textSize="34sp"
             android:textStyle="bold"
             android:letterSpacing="0.04"
             android:fontFamily="sans-serif-light" />
@@ -41,75 +40,118 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
+            android:layout_marginTop="5dp"
             android:text="Real-time Danger Detection"
-            android:textColor="#88FFFFFF"
-            android:textSize="13sp"
-            android:letterSpacing="0.12" />
+            android:textColor="#77FFFFFF"
+            android:textSize="12sp"
+            android:letterSpacing="0.14" />
 
     </LinearLayout>
 
-    <!-- Divider -->
+    <!-- Thin divider line -->
     <View
         android:id="@+id/divider"
-        android:layout_width="48dp"
+        android:layout_width="40dp"
         android:layout_height="1dp"
-        android:background="#44FF4500"
+        android:background="#33FF4500"
         android:alpha="0"
+        android:layout_marginTop="20dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/logoBlock"
-        android:layout_marginTop="24dp" />
+        app:layout_constraintTop_toBottomOf="@id/logoBlock" />
 
-    <!-- Greek quote block — lower third -->
+    <!-- Quote block — lower portion -->
     <LinearLayout
         android:id="@+id/quoteBlock"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:gravity="center"
-        android:paddingHorizontal="40dp"
+        android:paddingHorizontal="44dp"
         android:alpha="0"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.78">
+        app:layout_constraintBottom_toTopOf="@id/progressBarContainer"
+        app:layout_constraintVertical_bias="0.82">
 
+        <!-- Open-quote glyph -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="\u201cThe bravest are surely those who have the clearest vision of what is before them \u2014 glory and danger alike \u2014 and yet notwithstanding, go out to meet it.\u201d"
-            android:textColor="#CCFFFFFF"
+            android:text="\u201c"
+            android:textColor="#55FF4500"
+            android:textSize="40sp"
+            android:fontFamily="serif"
+            android:gravity="start"
+            android:lineSpacingMultiplier="0.4" />
+
+        <TextView
+            android:id="@+id/quoteText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textColor="#D0FFFFFF"
             android:textSize="14sp"
-            android:lineSpacingMultiplier="1.6"
+            android:lineSpacingMultiplier="1.65"
             android:gravity="center"
             android:fontFamily="serif" />
 
         <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="\u201d"
+            android:textColor="#55FF4500"
+            android:textSize="40sp"
+            android:fontFamily="serif"
+            android:gravity="end"
+            android:lineSpacingMultiplier="0.4" />
+
+        <TextView
+            android:id="@+id/attributionText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
-            android:text="\u2014 Thucydides, History of the Peloponnesian War (431 BC)"
-            android:textColor="#77FF4500"
+            android:text=""
+            android:textColor="#66FF4500"
             android:textSize="11sp"
             android:letterSpacing="0.06"
             android:gravity="center" />
 
     </LinearLayout>
 
-    <!-- Version number -->
-    <TextView
-        android:layout_width="wrap_content"
+    <!-- Progress container at very bottom -->
+    <LinearLayout
+        android:id="@+id/progressBarContainer"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="20dp"
-        android:text="v1.0"
-        android:textColor="#33FFFFFF"
-        android:textSize="11sp"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:paddingBottom="36dp"
         android:alpha="0"
-        android:id="@+id/versionText"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="v1.0"
+            android:textColor="#22FFFFFF"
+            android:textSize="10sp"
+            android:layout_marginBottom="10dp" />
+
+        <!-- Reading progress bar -->
+        <ProgressBar
+            android:id="@+id/readingProgress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="120dp"
+            android:layout_height="2dp"
+            android:max="1000"
+            android:progress="0"
+            android:progressTint="@color/brand_accent"
+            android:progressBackgroundTint="#22FFFFFF" />
+
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

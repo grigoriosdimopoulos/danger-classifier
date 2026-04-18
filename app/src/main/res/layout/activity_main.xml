@@ -16,6 +16,16 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <!-- Detection bounding-box overlay — same size as preview, drawn on top -->
+    <com.dangerclassifier.DetectionOverlayView
+        android:id="@+id/detectionOverlay"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <!-- Top gradient fade (vignette) -->
     <View
         android:layout_width="0dp"
