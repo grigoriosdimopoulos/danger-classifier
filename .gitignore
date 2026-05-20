@@ -1,0 +1,18 @@
+# Build outputs
+.gradle/
+build/
+app/build/
+*.apk
+*.aab
+
+# Local IDE files
+.idea/
+*.iml
+local.properties
+
+# Keystore — NEVER commit; store base64 in GitHub secrets instead
+keystore/
+
+# OS
+.DS_Store
+Thumbs.db

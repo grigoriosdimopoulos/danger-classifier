@@ -1,4 +1,4 @@
-name: Build APK
+name: Build & Release
 
 on:
   push:
@@ -8,29 +8,78 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  # ── Debug APK (every push, no secrets needed) ──────────────────────────────
+  build-debug:
+    name: Debug APK
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: gradle
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-
       - name: Build debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
 
-      - name: Upload APK
+      - uses: actions/upload-artifact@v4
+        with:
+          name: warning-ai-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
+
+  # ── Signed Release (requires GitHub secrets) ────────────────────────────────
+  build-release:
+    name: Signed Release (AAB + APK)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Decode keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > $RUNNER_TEMP/warning-ai-upload.jks
+
+      - name: Build signed release AAB (Play Store)
+        env:
+          KEYSTORE_PATH:     ${{ runner.temp }}/warning-ai-upload.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS:         ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD:      ${{ secrets.KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew bundleRelease --stacktrace
+
+      - name: Build signed release APK (direct install)
+        env:
+          KEYSTORE_PATH:     ${{ runner.temp }}/warning-ai-upload.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS:         ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD:      ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Upload AAB (Play Store upload)
         uses: actions/upload-artifact@v4
         with:
-          name: danger-classifier-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 30
+          name: warning-ai-release-aab
+          path: app/build/outputs/bundle/release/app-release.aab
+          retention-days: 90
+
+      - name: Upload signed APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: warning-ai-release-apk
+          path: app/build/outputs/apk/release/app-release.apk
+          retention-days: 90
