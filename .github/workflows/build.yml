@@ -33,7 +33,7 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
 
-  # ── Signed Release (requires GitHub secrets) ────────────────────────────────
+  # ── Signed Release (keystore lives in repo, only passwords are secrets) ────
   build-release:
     name: Signed Release (AAB + APK)
     runs-on: ubuntu-latest
@@ -48,15 +48,11 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Decode keystore
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > $RUNNER_TEMP/warning-ai-upload.jks
-
       - name: Build signed release AAB (Play Store)
         env:
-          KEYSTORE_PATH:     ${{ runner.temp }}/warning-ai-upload.jks
+          KEYSTORE_PATH:     ${{ github.workspace }}/keystore/warning-ai-upload.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS:         ${{ secrets.KEY_ALIAS }}
+          KEY_ALIAS:         warning-ai-key
           KEY_PASSWORD:      ${{ secrets.KEY_PASSWORD }}
         run: |
           chmod +x gradlew
@@ -64,9 +60,9 @@ jobs:
 
       - name: Build signed release APK (direct install)
         env:
-          KEYSTORE_PATH:     ${{ runner.temp }}/warning-ai-upload.jks
+          KEYSTORE_PATH:     ${{ github.workspace }}/keystore/warning-ai-upload.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS:         ${{ secrets.KEY_ALIAS }}
+          KEY_ALIAS:         warning-ai-key
           KEY_PASSWORD:      ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew assembleRelease --stacktrace
 
