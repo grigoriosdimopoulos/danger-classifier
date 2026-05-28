@@ -1,0 +1,42 @@
+Privacy Policy
+
+Warning.AI is built and maintained as a free app. This SERVICE is provided at no cost and is intended for use as is.
+
+This page informs users about the policies regarding the collection, use, and disclosure of Personal Information for anyone who uses this app.
+
+Information Collection and Use
+
+Warning.AI does NOT collect, store, transmit, or share any personal information. The app does not require an account, login, or registration of any kind.
+
+Camera
+
+The app requests access to your device camera solely to perform real-time on-device scene analysis. Camera frames are processed entirely on your device and are never saved, uploaded, or transmitted anywhere.
+
+Internet Access
+
+The app requires a one-time internet connection on first launch to download the AI model files (~30 MB total) from Google's public servers. After this initial download, the app works fully offline. No user data is sent during or after this download.
+
+On-Device Processing
+
+All AI inference (object detection and scene classification) runs entirely on your device using TensorFlow Lite. No images, video, or analysis results are ever sent to any server.
+
+Third-Party Services
+
+The app uses the following third-party service solely for the one-time model download:
+
+Google APIs / Cloud Storage
+You can review Google's privacy policy here: https://policies.google.com/privacy
+
+No analytics, advertising SDKs, crash reporting services, or tracking libraries are included in this app.
+
+Children's Privacy
+
+This app does not address anyone under the age of 13 and does not knowingly collect any information from children.
+
+Changes to This Privacy Policy
+
+We may update our Privacy Policy from time to time. You are advised to review this page periodically for any changes. Changes are effective immediately upon posting.
+
+Contact Us
+
+If you have any questions or suggestions about this Privacy Policy, do not hesitate to contact us at: grigoriosdimopoulos@gmail.com
