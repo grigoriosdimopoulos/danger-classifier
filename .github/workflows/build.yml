@@ -48,11 +48,14 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
+      - name: Decode keystore
+        run: printf '%s' "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > $RUNNER_TEMP/upload.jks
+
       - name: Build signed release AAB (Play Store)
         env:
-          KEYSTORE_PATH:     ${{ github.workspace }}/keystore/warning-ai-upload.jks
+          KEYSTORE_PATH:     ${{ runner.temp }}/upload.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS:         warning-ai-key
+          KEY_ALIAS:         ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD:      ${{ secrets.KEY_PASSWORD }}
         run: |
           chmod +x gradlew
@@ -60,9 +63,9 @@ jobs:
 
       - name: Build signed release APK (direct install)
         env:
-          KEYSTORE_PATH:     ${{ github.workspace }}/keystore/warning-ai-upload.jks
+          KEYSTORE_PATH:     ${{ runner.temp }}/upload.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS:         warning-ai-key
+          KEY_ALIAS:         ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD:      ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew assembleRelease --stacktrace
 
