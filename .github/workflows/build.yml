@@ -49,7 +49,7 @@ jobs:
           cache: gradle
 
       - name: Decode keystore
-        run: printf '%s' "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > $RUNNER_TEMP/upload.jks
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | tr -d ' \n\r' | base64 --decode > $RUNNER_TEMP/upload.jks
 
       - name: Build signed release AAB (Play Store)
         env:
