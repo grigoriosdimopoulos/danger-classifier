@@ -22,6 +22,11 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
+      - name: Install Android SDK build-tools 35
+        run: |
+          $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager \
+            "build-tools;35.0.0" "platforms;android-36" 2>/dev/null || true
+
       - name: Build debug APK
         run: |
           chmod +x gradlew
@@ -47,6 +52,11 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: gradle
+
+      - name: Install Android SDK build-tools 35
+        run: |
+          $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager \
+            "build-tools;35.0.0" "platforms;android-36" 2>/dev/null || true
 
       - name: Build signed release AAB (Play Store)
         env:
